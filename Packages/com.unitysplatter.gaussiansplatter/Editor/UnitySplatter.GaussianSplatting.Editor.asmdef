@@ -1,0 +1,15 @@
+{
+  "name": "UnitySplatter.GaussianSplatting.Editor",
+  "references": [
+    "UnitySplatter.GaussianSplatting.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true,
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "defineConstraints": [],
+  "versionDefines": []
+}
