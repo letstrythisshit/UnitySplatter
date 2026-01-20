@@ -1,10 +1,23 @@
 {
   "name": "com.unitysplatter.gaussiansplatter",
   "displayName": "UnitySplatter Gaussian Splatting",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "unity": "6000.3",
-  "description": "Advanced Gaussian splatting editing, reconstruction, realtime rendering, filtering, and optimization with sequence playback.",
+  "description": "Comprehensive Gaussian splatting package with advanced editing, reconstruction, high-performance rendering (GPU culling, LOD), filtering, optimization, compression, streaming playback, and mobile support for Unity 6.3 LTS. Supports DirectX, Vulkan, and OpenGL ES 3.1+ with compute shader acceleration.",
+  "keywords": [
+    "gaussian splatting",
+    "3dgs",
+    "point cloud",
+    "ply",
+    "volumetric",
+    "rendering",
+    "vfx",
+    "compute shader",
+    "lod",
+    "mobile"
+  ],
   "author": {
     "name": "UnitySplatter"
-  }
+  },
+  "dependencies": {}
 }
