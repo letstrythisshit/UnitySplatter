@@ -35,6 +35,7 @@ namespace UnitySplatter.GaussianSplatting
 
         // Runtime state
         private GaussianSplatRenderer splatRenderer;
+        private GaussianSplatAsset runtimeAsset;
         private List<string> frameFilePaths = new List<string>();
         private Dictionary<int, GaussianSplatFrameData> frameCache = new Dictionary<int, GaussianSplatFrameData>();
         private Queue<int> cacheAccessOrder = new Queue<int>();
@@ -61,6 +62,7 @@ namespace UnitySplatter.GaussianSplatting
         private void Awake()
         {
             splatRenderer = GetComponent<GaussianSplatRenderer>();
+            runtimeAsset = ScriptableObject.CreateInstance<GaussianSplatAsset>();
             if (splatRenderer == null)
             {
                 Debug.LogError("[GaussianSplatStreamingPlayer] GaussianSplatRenderer component not found!", this);
@@ -179,9 +181,10 @@ namespace UnitySplatter.GaussianSplatting
         {
             GaussianSplatFrameData frameData = GetFrame(frameIndex);
 
-            if (frameData != null && frameData.IsValid)
+            if (frameData != null && frameData.IsValid(out _))
             {
-                splatRenderer.SetFrameData(frameData);
+                runtimeAsset.SetFrame(frameData);
+                splatRenderer.Asset = runtimeAsset;
             }
             else
             {
@@ -295,7 +298,7 @@ namespace UnitySplatter.GaussianSplatting
                 // Load PLY file
                 GaussianSplatFrameData frameData = GaussianSplatPlyLoader.LoadFromFile(filePath);
 
-                if (frameData == null || !frameData.IsValid)
+                if (frameData == null || !frameData.IsValid(out _))
                 {
                     Debug.LogError($"[GaussianSplatStreamingPlayer] Failed to load frame {frameIndex} from {filePath}");
                     return null;

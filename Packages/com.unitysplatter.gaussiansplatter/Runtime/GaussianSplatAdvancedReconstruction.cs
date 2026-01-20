@@ -91,14 +91,9 @@ namespace UnitySplatter.GaussianSplatting
                 for (int i = 0; i < count; i++)
                     opacities[i] = 1.0f;
 
-                return new GaussianSplatFrameData
-                {
-                    positions = positions,
-                    scales = scales,
-                    rotations = rotations,
-                    colors = finalColors,
-                    opacities = opacities
-                };
+                var result = new GaussianSplatFrameData();
+                result.SetData(positions, scales, rotations, finalColors, opacities);
+                return result;
             }
             catch (Exception e)
             {
@@ -205,32 +200,31 @@ namespace UnitySplatter.GaussianSplatting
             int iterations = 5,
             float learningRate = 0.1f)
         {
-            if (source == null || !source.IsValid)
+            if (source == null || !source.IsValid(out _))
                 return null;
 
             // Clone source data
-            var refined = new GaussianSplatFrameData
-            {
-                positions = (Vector3[])source.positions.Clone(),
-                scales = (Vector3[])source.scales.Clone(),
-                rotations = (Quaternion[])source.rotations.Clone(),
-                colors = (Color[])source.colors.Clone(),
-                opacities = (float[])source.opacities.Clone()
-            };
+            Vector3[] positions = (Vector3[])source.Positions.Clone();
+            Vector3[] scales = (Vector3[])source.Scales.Clone();
+            Quaternion[] rotations = (Quaternion[])source.Rotations.Clone();
+            Color[] colors = (Color[])source.Colors.Clone();
+            float[] opacities = (float[])source.Opacities.Clone();
 
             // Iterative refinement
             for (int iter = 0; iter < iterations; iter++)
             {
                 // Smooth positions
-                refined.positions = SmoothPositions(refined.positions, learningRate);
+                positions = SmoothPositions(positions, learningRate);
 
                 // Adjust scales to fill gaps
-                refined.scales = AdaptiveScaleAdjustment(refined.positions, refined.scales, learningRate);
+                scales = AdaptiveScaleAdjustment(positions, scales, learningRate);
 
                 // Smooth opacities
-                refined.opacities = SmoothOpacities(refined.positions, refined.opacities, learningRate);
+                opacities = SmoothOpacities(positions, opacities, learningRate);
             }
 
+            var refined = new GaussianSplatFrameData();
+            refined.SetData(positions, scales, rotations, colors, opacities);
             return refined;
         }
 
@@ -242,14 +236,14 @@ namespace UnitySplatter.GaussianSplatting
             int neighborCount = 8,
             float stddevMultiplier = 2.0f)
         {
-            if (source == null || !source.IsValid)
+            if (source == null || !source.IsValid(out _))
                 return null;
 
             List<int> inlierIndices = new List<int>();
 
             for (int i = 0; i < source.Count; i++)
             {
-                var neighbors = FindKNearestNeighbors(source.positions, i, neighborCount);
+                var neighbors = FindKNearestNeighbors(source.Positions, i, neighborCount);
 
                 if (neighbors.Count < 2)
                 {
@@ -261,7 +255,7 @@ namespace UnitySplatter.GaussianSplatting
                 float meanDist = 0f;
                 foreach (int neighbor in neighbors)
                 {
-                    meanDist += Vector3.Distance(source.positions[i], source.positions[neighbor]);
+                    meanDist += Vector3.Distance(source.Positions[i], source.Positions[neighbor]);
                 }
                 meanDist /= neighbors.Count;
 
@@ -269,7 +263,7 @@ namespace UnitySplatter.GaussianSplatting
                 float variance = 0f;
                 foreach (int neighbor in neighbors)
                 {
-                    float dist = Vector3.Distance(source.positions[i], source.positions[neighbor]);
+                    float dist = Vector3.Distance(source.Positions[i], source.Positions[neighbor]);
                     float diff = dist - meanDist;
                     variance += diff * diff;
                 }
@@ -295,7 +289,7 @@ namespace UnitySplatter.GaussianSplatting
             float holeThreshold = 0.1f,
             int maxNewSplats = 10000)
         {
-            if (source == null || !source.IsValid)
+            if (source == null || !source.IsValid(out _))
                 return null;
 
             List<Vector3> newPositions = new List<Vector3>();
@@ -307,27 +301,27 @@ namespace UnitySplatter.GaussianSplatting
             // Detect holes by finding pairs of nearby points with large gaps
             for (int i = 0; i < source.Count && newPositions.Count < maxNewSplats; i++)
             {
-                var neighbors = FindKNearestNeighbors(source.positions, i, 4);
+                var neighbors = FindKNearestNeighbors(source.Positions, i, 4);
 
                 foreach (int neighbor in neighbors)
                 {
                     if (neighbor <= i) continue; // Avoid duplicates
 
-                    Vector3 pos1 = source.positions[i];
-                    Vector3 pos2 = source.positions[neighbor];
+                    Vector3 pos1 = source.Positions[i];
+                    Vector3 pos2 = source.Positions[neighbor];
                     float dist = Vector3.Distance(pos1, pos2);
 
                     // Check if gap is large enough to need filling
-                    float avgScale = (source.scales[i].magnitude + source.scales[neighbor].magnitude) * 0.5f;
+                    float avgScale = (source.Scales[i].magnitude + source.Scales[neighbor].magnitude) * 0.5f;
 
                     if (dist > holeThreshold && dist > avgScale * 3f)
                     {
                         // Add intermediate splat
                         Vector3 midPos = (pos1 + pos2) * 0.5f;
-                        Vector3 midScale = (source.scales[i] + source.scales[neighbor]) * 0.5f;
-                        Quaternion midRot = Quaternion.Slerp(source.rotations[i], source.rotations[neighbor], 0.5f);
-                        Color midColor = (source.colors[i] + source.colors[neighbor]) * 0.5f;
-                        float midOpacity = (source.opacities[i] + source.opacities[neighbor]) * 0.5f;
+                        Vector3 midScale = (source.Scales[i] + source.Scales[neighbor]) * 0.5f;
+                        Quaternion midRot = Quaternion.Slerp(source.Rotations[i], source.Rotations[neighbor], 0.5f);
+                        Color midColor = (source.Colors[i] + source.Colors[neighbor]) * 0.5f;
+                        float midOpacity = (source.Opacities[i] + source.Opacities[neighbor]) * 0.5f;
 
                         newPositions.Add(midPos);
                         newScales.Add(midScale);
@@ -510,26 +504,28 @@ namespace UnitySplatter.GaussianSplatting
 
         private static GaussianSplatFrameData CreateSubset(GaussianSplatFrameData source, int[] indices)
         {
-            return new GaussianSplatFrameData
-            {
-                positions = indices.Select(i => source.positions[i]).ToArray(),
-                scales = indices.Select(i => source.scales[i]).ToArray(),
-                rotations = indices.Select(i => source.rotations[i]).ToArray(),
-                colors = indices.Select(i => source.colors[i]).ToArray(),
-                opacities = indices.Select(i => source.opacities[i]).ToArray()
-            };
+            var result = new GaussianSplatFrameData();
+            result.SetData(
+                indices.Select(i => source.Positions[i]).ToArray(),
+                indices.Select(i => source.Scales[i]).ToArray(),
+                indices.Select(i => source.Rotations[i]).ToArray(),
+                indices.Select(i => source.Colors[i]).ToArray(),
+                indices.Select(i => source.Opacities[i]).ToArray()
+            );
+            return result;
         }
 
         private static GaussianSplatFrameData MergeSplats(GaussianSplatFrameData a, GaussianSplatFrameData b)
         {
-            return new GaussianSplatFrameData
-            {
-                positions = a.positions.Concat(b.positions).ToArray(),
-                scales = a.scales.Concat(b.scales).ToArray(),
-                rotations = a.rotations.Concat(b.rotations).ToArray(),
-                colors = a.colors.Concat(b.colors).ToArray(),
-                opacities = a.opacities.Concat(b.opacities).ToArray()
-            };
+            var result = new GaussianSplatFrameData();
+            result.SetData(
+                a.Positions.Concat(b.Positions).ToArray(),
+                a.Scales.Concat(b.Scales).ToArray(),
+                a.Rotations.Concat(b.Rotations).ToArray(),
+                a.Colors.Concat(b.Colors).ToArray(),
+                a.Opacities.Concat(b.Opacities).ToArray()
+            );
+            return result;
         }
 
         // Simple 3x3 matrix for covariance calculations

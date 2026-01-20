@@ -329,7 +329,7 @@ namespace UnitySplatter.GaussianSplatting
 
             // Get splat data from base renderer
             GaussianSplatFrameData frameData = baseRenderer.GetCurrentFrameData();
-            if (frameData == null || !frameData.IsValid || frameData.Count == 0)
+            if (frameData == null || !frameData.IsValid(out _) || frameData.Count == 0)
                 return;
 
             int splatCount = frameData.Count;
@@ -552,13 +552,10 @@ namespace UnitySplatter.GaussianSplatting
 
         public static GaussianSplatFrameData GetCurrentFrameData(this GaussianSplatRenderer renderer)
         {
-            var type = typeof(GaussianSplatRenderer);
-            var frameDataField = type.GetField("currentFrameData", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (frameDataField == null)
+            if (renderer == null || renderer.Asset == null)
                 return null;
 
-            return frameDataField.GetValue(renderer) as GaussianSplatFrameData;
+            return renderer.Asset.Frame;
         }
     }
 }
