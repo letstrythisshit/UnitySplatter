@@ -1,0 +1,105 @@
+// GPU-based depth sorting for Gaussian Splats
+// Implements bitonic sort for efficient parallel sorting
+#pragma kernel CalculateDepths
+#pragma kernel BitonicSort
+#pragma kernel CompactSorted
+
+// Input/Output buffers
+StructuredBuffer<float3> _Positions;
+RWStructuredBuffer<float> _Depths;
+RWStructuredBuffer<uint> _SortedIndices;
+
+// Temporary buffers for sorting
+RWStructuredBuffer<float> _TempDepths;
+RWStructuredBuffer<uint> _TempIndices;
+
+// Camera parameters
+float3 _CameraPosition;
+float3 _CameraForward;
+float4x4 _ViewMatrix;
+
+// Sorting parameters
+uint _ElementCount;
+uint _GroupWidth;
+uint _GroupHeight;
+uint _StepIndex;
+
+// Calculate depth for each splat
+[numthreads(256, 1, 1)]
+void CalculateDepths(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _ElementCount)
+        return;
+
+    float3 position = _Positions[id.x];
+
+    // Calculate view-space depth (more accurate than distance for sorting)
+    float4 viewPos = mul(_ViewMatrix, float4(position, 1.0));
+    float depth = -viewPos.z; // Negate because view space Z is negative forward
+
+    _Depths[id.x] = depth;
+    _SortedIndices[id.x] = id.x; // Initialize with identity mapping
+}
+
+// Bitonic sort kernel - must be called multiple times with different parameters
+[numthreads(256, 1, 1)]
+void BitonicSort(uint3 id : SV_DispatchThreadID)
+{
+    uint threadId = id.x;
+
+    // Ensure we don't go out of bounds
+    uint sortIndex = threadId + (threadId / _GroupWidth) * _GroupWidth;
+
+    if (sortIndex >= _ElementCount)
+        return;
+
+    uint pairIndex = sortIndex ^ _GroupHeight;
+
+    if (pairIndex < _ElementCount && sortIndex < pairIndex)
+    {
+        float depth1 = _Depths[sortIndex];
+        float depth2 = _Depths[pairIndex];
+
+        uint index1 = _SortedIndices[sortIndex];
+        uint index2 = _SortedIndices[pairIndex];
+
+        // Determine sort direction (back-to-front for alpha blending)
+        bool ascending = ((sortIndex >> _StepIndex) & 1) == 0;
+
+        bool shouldSwap = ascending ? (depth1 < depth2) : (depth1 > depth2);
+
+        if (shouldSwap)
+        {
+            // Swap depths
+            _Depths[sortIndex] = depth2;
+            _Depths[pairIndex] = depth1;
+
+            // Swap indices
+            _SortedIndices[sortIndex] = index2;
+            _SortedIndices[pairIndex] = index1;
+        }
+    }
+}
+
+// Compact sorted results - removes invalid entries and ensures contiguous data
+[numthreads(256, 1, 1)]
+void CompactSorted(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _ElementCount)
+        return;
+
+    uint index = _SortedIndices[id.x];
+    float depth = _Depths[id.x];
+
+    // Only keep valid depths (positive values)
+    if (depth > 0.0 && index < _ElementCount)
+    {
+        _TempIndices[id.x] = index;
+        _TempDepths[id.x] = depth;
+    }
+    else
+    {
+        _TempIndices[id.x] = 0xFFFFFFFF; // Mark as invalid
+        _TempDepths[id.x] = -1.0;
+    }
+}
