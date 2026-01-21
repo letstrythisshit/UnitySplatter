@@ -383,11 +383,11 @@ namespace UnitySplatter.GaussianSplatting
                     return splatCount;
 
                 // Set input buffers
-                cullingCompute.SetBuffer(cullKernel, "_InputPositions", buffers.positions);
-                cullingCompute.SetBuffer(cullKernel, "_InputScales", buffers.scales);
-                cullingCompute.SetBuffer(cullKernel, "_InputRotations", buffers.rotations);
-                cullingCompute.SetBuffer(cullKernel, "_InputColors", buffers.colors);
-                cullingCompute.SetBuffer(cullKernel, "_InputOpacities", buffers.opacities);
+                cullingCompute.SetBuffer(cullKernel, "_InputPositions", buffers.Value.positions);
+                cullingCompute.SetBuffer(cullKernel, "_InputScales", buffers.Value.scales);
+                cullingCompute.SetBuffer(cullKernel, "_InputRotations", buffers.Value.rotations);
+                cullingCompute.SetBuffer(cullKernel, "_InputColors", buffers.Value.colors);
+                cullingCompute.SetBuffer(cullKernel, "_InputOpacities", buffers.Value.opacities);
 
                 // Set output buffers
                 cullingCompute.SetBuffer(cullKernel, "_OutputPositions", culledPositionsBuffer);
@@ -480,11 +480,11 @@ namespace UnitySplatter.GaussianSplatting
                 if (buffers == null)
                     return;
 
-                renderMaterial.SetBuffer("_Positions", buffers.positions);
-                renderMaterial.SetBuffer("_Scales", buffers.scales);
-                renderMaterial.SetBuffer("_Rotations", buffers.rotations);
-                renderMaterial.SetBuffer("_Colors", buffers.colors);
-                renderMaterial.SetBuffer("_Opacities", buffers.opacities);
+                renderMaterial.SetBuffer("_Positions", buffers.Value.positions);
+                renderMaterial.SetBuffer("_Scales", buffers.Value.scales);
+                renderMaterial.SetBuffer("_Rotations", buffers.Value.rotations);
+                renderMaterial.SetBuffer("_Colors", buffers.Value.colors);
+                renderMaterial.SetBuffer("_Opacities", buffers.Value.opacities);
             }
 
             // Set render state
