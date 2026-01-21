@@ -167,6 +167,13 @@ namespace UnitySplatter.GaussianSplatting.Editor
             if (importedFrame != null && importedFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox($"Imported Frame Info:\nSplats: {importedFrame.Count:N0}\nMemory: {GetFrameSizeKB(importedFrame):F2} KB", MessageType.None);
+
+                EditorGUILayout.Space(5);
+
+                if (GUILayout.Button("Save Imported Frame as Asset", GUILayout.Height(25)))
+                {
+                    SaveImportedFrameAsAsset();
+                }
             }
         }
 
@@ -458,7 +465,36 @@ namespace UnitySplatter.GaussianSplatting.Editor
 
                 if (importedFrame != null && importedFrame.IsValid(out _))
                 {
-                    EditorUtility.DisplayDialog("Success", $"Imported {importedFrame.Count:N0} splats", "OK");
+                    // Prompt user to save as asset
+                    string fileName = System.IO.Path.GetFileNameWithoutExtension(importFilePath);
+                    string savePath = EditorUtility.SaveFilePanelInProject(
+                        "Save Gaussian Splat Asset",
+                        fileName,
+                        "asset",
+                        "Save the imported Gaussian splat as a Unity asset",
+                        "Assets"
+                    );
+
+                    if (!string.IsNullOrEmpty(savePath))
+                    {
+                        // Create and save asset
+                        var asset = ScriptableObject.CreateInstance<GaussianSplatAsset>();
+                        asset.SetFrame(importedFrame);
+
+                        AssetDatabase.CreateAsset(asset, savePath);
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
+
+                        // Select the created asset
+                        EditorGUIUtility.PingObject(asset);
+                        Selection.activeObject = asset;
+
+                        EditorUtility.DisplayDialog("Success", $"Imported and saved {importedFrame.Count:N0} splats to:\n{savePath}", "OK");
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Cancelled", "Import cancelled - asset not saved", "OK");
+                    }
                 }
                 else
                 {
@@ -468,6 +504,45 @@ namespace UnitySplatter.GaussianSplatting.Editor
             catch (Exception e)
             {
                 EditorUtility.DisplayDialog("Error", $"Import failed: {e.Message}", "OK");
+            }
+        }
+
+        private void SaveImportedFrameAsAsset()
+        {
+            if (importedFrame == null || !importedFrame.IsValid(out _))
+            {
+                EditorUtility.DisplayDialog("Error", "No valid frame data to save", "OK");
+                return;
+            }
+
+            string savePath = EditorUtility.SaveFilePanelInProject(
+                "Save Gaussian Splat Asset",
+                "GaussianSplat",
+                "asset",
+                "Save the imported Gaussian splat as a Unity asset",
+                "Assets"
+            );
+
+            if (!string.IsNullOrEmpty(savePath))
+            {
+                try
+                {
+                    var asset = ScriptableObject.CreateInstance<GaussianSplatAsset>();
+                    asset.SetFrame(importedFrame);
+
+                    AssetDatabase.CreateAsset(asset, savePath);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+
+                    EditorGUIUtility.PingObject(asset);
+                    Selection.activeObject = asset;
+
+                    EditorUtility.DisplayDialog("Success", $"Saved {importedFrame.Count:N0} splats to:\n{savePath}", "OK");
+                }
+                catch (Exception e)
+                {
+                    EditorUtility.DisplayDialog("Error", $"Failed to save asset: {e.Message}", "OK");
+                }
             }
         }
 
@@ -501,8 +576,48 @@ namespace UnitySplatter.GaussianSplatting.Editor
                     }
                 }
 
-                EditorUtility.DisplayDialog("Success", $"Imported {sequenceFrames.Count} frames", "OK");
-                currentTab = Tab.Sequence;
+                if (sequenceFrames.Count > 0)
+                {
+                    // Automatically switch to Sequence tab and prompt to save
+                    currentTab = Tab.Sequence;
+
+                    if (EditorUtility.DisplayDialog(
+                        "Import Successful",
+                        $"Imported {sequenceFrames.Count} frames.\n\nWould you like to save this as a Sequence Asset now?",
+                        "Save Now",
+                        "Save Later"))
+                    {
+                        // User chose to save now - open save dialog
+                        string folderName = System.IO.Path.GetFileName(importFolderPath);
+                        string savePath = EditorUtility.SaveFilePanelInProject(
+                            "Save Gaussian Splat Sequence",
+                            folderName + "_Sequence",
+                            "asset",
+                            "Save the sequence as a Unity asset",
+                            "Assets"
+                        );
+
+                        if (!string.IsNullOrEmpty(savePath))
+                        {
+                            var sequenceAsset = ScriptableObject.CreateInstance<GaussianSplatSequenceAsset>();
+                            sequenceAsset.SetFrames(sequenceFrames, sequenceFPS, sequenceLoop);
+
+                            AssetDatabase.CreateAsset(sequenceAsset, savePath);
+                            AssetDatabase.SaveAssets();
+                            AssetDatabase.Refresh();
+
+                            // Select the created asset
+                            EditorGUIUtility.PingObject(sequenceAsset);
+                            Selection.activeObject = sequenceAsset;
+
+                            EditorUtility.DisplayDialog("Success", $"Sequence saved to:\n{savePath}", "OK");
+                        }
+                    }
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Warning", "No valid frames were imported from the folder", "OK");
+                }
             }
             catch (Exception e)
             {
