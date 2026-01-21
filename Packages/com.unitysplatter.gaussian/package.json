@@ -1,0 +1,10 @@
+{
+  "name": "com.unitysplatter.gaussian",
+  "displayName": "UnitySplatter Gaussian Splatting",
+  "version": "1.0.0",
+  "unity": "6000.3",
+  "description": "Advanced Gaussian splatting editing, reconstruction, realtime rendering, filtering, optimization, and PLY sequence playback.",
+  "author": {
+    "name": "UnitySplatter"
+  }
+}
