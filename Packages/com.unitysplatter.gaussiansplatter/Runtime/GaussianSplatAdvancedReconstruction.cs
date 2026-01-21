@@ -339,14 +339,15 @@ namespace UnitySplatter.GaussianSplatting
                 return source; // No holes found
 
             // Merge original and new splats
-            return MergeSplats(source, new GaussianSplatFrameData
-            {
-                positions = newPositions.ToArray(),
-                scales = newScales.ToArray(),
-                rotations = newRotations.ToArray(),
-                colors = newColors.ToArray(),
-                opacities = newOpacities.ToArray()
-            });
+            var newSplats = new GaussianSplatFrameData();
+            newSplats.SetData(
+                newPositions.ToArray(),
+                newScales.ToArray(),
+                newRotations.ToArray(),
+                newColors.ToArray(),
+                newOpacities.ToArray()
+            );
+            return MergeSplats(source, newSplats);
         }
 
         // Helper methods
