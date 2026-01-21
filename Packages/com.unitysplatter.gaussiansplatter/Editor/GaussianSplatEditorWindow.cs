@@ -594,9 +594,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
 
             // Create sequence asset
             var sequenceAsset = ScriptableObject.CreateInstance<GaussianSplatSequenceAsset>();
-            sequenceAsset.frames = sequenceFrames;
-            sequenceAsset.fps = sequenceFPS;
-            sequenceAsset.loop = sequenceLoop;
+            sequenceAsset.SetFrames(sequenceFrames, sequenceFPS, sequenceLoop);
 
             AssetDatabase.CreateAsset(sequenceAsset, sequenceSavePath);
             AssetDatabase.SaveAssets();
