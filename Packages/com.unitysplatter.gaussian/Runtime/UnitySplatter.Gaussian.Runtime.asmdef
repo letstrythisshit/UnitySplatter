@@ -1,12 +1,12 @@
 {
-  "name": "UnitySplatter.GaussianSplatting.Runtime",
+  "name": "UnitySplatter.Gaussian.Runtime",
   "references": [],
-  "autoReferenced": true,
   "includePlatforms": [],
   "excludePlatforms": [],
-  "allowUnsafeCode": false,
+  "allowUnsafeCode": true,
   "overrideReferences": false,
   "precompiledReferences": [],
+  "autoReferenced": true,
   "defineConstraints": [],
   "versionDefines": []
 }
