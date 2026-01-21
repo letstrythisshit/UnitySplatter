@@ -54,7 +54,7 @@ namespace UnitySplatter.GaussianSplatting
         /// </summary>
         public static CompressedFrameData CompressCPU(GaussianSplatFrameData source)
         {
-            if (source == null || !source.IsValid || source.Count == 0)
+            if (source == null || !source.IsValid(out _) || source.Count == 0)
             {
                 Debug.LogError("[GaussianSplatCompressor] Invalid source data");
                 return null;
@@ -82,21 +82,21 @@ namespace UnitySplatter.GaussianSplatting
                 for (int i = 0; i < source.Count; i++)
                 {
                     // Compress position (3 floats -> 2 uints, 16 bits each)
-                    CompressPosition(source.positions[i], compressed.boundsMin, compressed.boundsMax,
+                    CompressPosition(source.Positions[i], compressed.boundsMin, compressed.boundsMax,
                                    compressed.compressedPositions, i * 2);
 
                     // Compress scale
-                    CompressScale(source.scales[i], compressed.scaleMin, compressed.scaleMax,
+                    CompressScale(source.Scales[i], compressed.scaleMin, compressed.scaleMax,
                                 compressed.compressedScales, i * 2);
 
                     // Compress rotation
-                    CompressRotation(source.rotations[i], compressed.compressedRotations, i * 2);
+                    CompressRotation(source.Rotations[i], compressed.compressedRotations, i * 2);
 
                     // Compress color
-                    compressed.compressedColors[i] = CompressColor(source.colors[i]);
+                    compressed.compressedColors[i] = CompressColor(source.Colors[i]);
 
                     // Compress opacity (4 per uint)
-                    CompressOpacity(source.opacities[i], compressed.compressedOpacities, i);
+                    CompressOpacity(source.Opacities[i], compressed.compressedOpacities, i);
                 }
 
                 return compressed;
@@ -121,35 +121,37 @@ namespace UnitySplatter.GaussianSplatting
 
             try
             {
-                GaussianSplatFrameData decompressed = new GaussianSplatFrameData
-                {
-                    positions = new Vector3[compressed.originalCount],
-                    scales = new Vector3[compressed.originalCount],
-                    rotations = new Quaternion[compressed.originalCount],
-                    colors = new Color[compressed.originalCount],
-                    opacities = new float[compressed.originalCount]
-                };
+                // Create arrays for decompressed data
+                Vector3[] positions = new Vector3[compressed.originalCount];
+                Vector3[] scales = new Vector3[compressed.originalCount];
+                Quaternion[] rotations = new Quaternion[compressed.originalCount];
+                Color[] colors = new Color[compressed.originalCount];
+                float[] opacities = new float[compressed.originalCount];
 
                 // Decompress each component
                 for (int i = 0; i < compressed.originalCount; i++)
                 {
                     // Decompress position
-                    decompressed.positions[i] = DecompressPosition(compressed.compressedPositions, i * 2,
-                                                                  compressed.boundsMin, compressed.boundsMax);
+                    positions[i] = DecompressPosition(compressed.compressedPositions, i * 2,
+                                                     compressed.boundsMin, compressed.boundsMax);
 
                     // Decompress scale
-                    decompressed.scales[i] = DecompressScale(compressed.compressedScales, i * 2,
-                                                            compressed.scaleMin, compressed.scaleMax);
+                    scales[i] = DecompressScale(compressed.compressedScales, i * 2,
+                                               compressed.scaleMin, compressed.scaleMax);
 
                     // Decompress rotation
-                    decompressed.rotations[i] = DecompressRotation(compressed.compressedRotations, i * 2);
+                    rotations[i] = DecompressRotation(compressed.compressedRotations, i * 2);
 
                     // Decompress color
-                    decompressed.colors[i] = DecompressColor(compressed.compressedColors[i]);
+                    colors[i] = DecompressColor(compressed.compressedColors[i]);
 
                     // Decompress opacity
-                    decompressed.opacities[i] = DecompressOpacity(compressed.compressedOpacities, i);
+                    opacities[i] = DecompressOpacity(compressed.compressedOpacities, i);
                 }
+
+                // Create frame data and set the arrays
+                GaussianSplatFrameData decompressed = new GaussianSplatFrameData();
+                decompressed.SetData(positions, scales, rotations, colors, opacities);
 
                 return decompressed;
             }
@@ -166,17 +168,17 @@ namespace UnitySplatter.GaussianSplatting
                                           out Vector3 boundsMin, out Vector3 boundsMax,
                                           out Vector3 scaleMin, out Vector3 scaleMax)
         {
-            boundsMin = source.positions[0];
-            boundsMax = source.positions[0];
-            scaleMin = source.scales[0];
-            scaleMax = source.scales[0];
+            boundsMin = source.Positions[0];
+            boundsMax = source.Positions[0];
+            scaleMin = source.Scales[0];
+            scaleMax = source.Scales[0];
 
             for (int i = 1; i < source.Count; i++)
             {
-                boundsMin = Vector3.Min(boundsMin, source.positions[i]);
-                boundsMax = Vector3.Max(boundsMax, source.positions[i]);
-                scaleMin = Vector3.Min(scaleMin, source.scales[i]);
-                scaleMax = Vector3.Max(scaleMax, source.scales[i]);
+                boundsMin = Vector3.Min(boundsMin, source.Positions[i]);
+                boundsMax = Vector3.Max(boundsMax, source.Positions[i]);
+                scaleMin = Vector3.Min(scaleMin, source.Scales[i]);
+                scaleMax = Vector3.Max(scaleMax, source.Scales[i]);
             }
 
             // Add small epsilon to avoid division by zero
@@ -450,7 +452,7 @@ namespace UnitySplatter.GaussianSplatting
 
         public static int GetUncompressedSize(GaussianSplatFrameData frame)
         {
-            if (frame == null || !frame.IsValid)
+            if (frame == null || !frame.IsValid(out _))
                 return 0;
 
             int size = 0;

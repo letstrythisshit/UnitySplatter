@@ -30,20 +30,20 @@ namespace UnitySplatter.GaussianSplatting.Editor
         private GaussianSplatFrameData importedFrame;
 
         // Process tab
-        private GaussianSplatFrameData processFrame;
+        private GaussianSplatAsset processFrame;
         private float filterOpacity = 0.1f;
         private int decimationStride = 2;
         private int randomSampleCount = 1000;
         private Bounds filterBounds = new Bounds(Vector3.zero, Vector3.one * 10f);
 
         // LOD tab
-        private GaussianSplatFrameData lodSourceFrame;
+        private GaussianSplatAsset lodSourceFrame;
         private int lodLevelCount = 4;
         private GaussianSplatLODGenerator.LODGenerationMethod lodMethod = GaussianSplatLODGenerator.LODGenerationMethod.ImportanceBased;
         private List<GaussianSplatFrameData> generatedLODs;
 
         // Compression tab
-        private GaussianSplatFrameData compressionSourceFrame;
+        private GaussianSplatAsset compressionSourceFrame;
         private GaussianSplatCompressor.CompressedFrameData compressedData;
         private string compressionSavePath = "";
 
@@ -54,7 +54,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
         private string sequenceSavePath = "";
 
         // Tools tab
-        private GaussianSplatFrameData toolsSourceFrame;
+        private GaussianSplatAsset toolsSourceFrame;
         private Vector3 translateOffset = Vector3.zero;
         private Vector3 scaleMultiplier = Vector3.one;
         private Vector3 rotationEuler = Vector3.zero;
@@ -164,7 +164,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
             EditorGUILayout.Space(10);
 
             // Display imported frame info
-            if (importedFrame != null && importedFrame.IsValid)
+            if (importedFrame != null && importedFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox($"Imported Frame Info:\nSplats: {importedFrame.Count:N0}\nMemory: {GetFrameSizeKB(importedFrame):F2} KB", MessageType.None);
             }
@@ -179,16 +179,16 @@ namespace UnitySplatter.GaussianSplatting.Editor
             EditorGUILayout.Space(5);
 
             // Source selection
-            processFrame = EditorGUILayout.ObjectField("Source Frame", processFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatFrameData;
+            processFrame = EditorGUILayout.ObjectField("Source Frame", processFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatAsset;
 
-            if (processFrame == null || !processFrame.IsValid)
+            if (processFrame == null || !processFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox("Select a valid Gaussian Splat Asset to process.", MessageType.Warning);
                 return;
             }
 
             EditorGUILayout.Space(5);
-            EditorGUILayout.LabelField($"Splat Count: {processFrame.Count:N0}", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField($"Splat Count: {processFrame.Frame.Count:N0}", EditorStyles.miniLabel);
             EditorGUILayout.Space(10);
 
             // Filtering options
@@ -238,9 +238,9 @@ namespace UnitySplatter.GaussianSplatting.Editor
             EditorGUILayout.Space(5);
 
             // Source selection
-            lodSourceFrame = EditorGUILayout.ObjectField("Source Frame", lodSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatFrameData;
+            lodSourceFrame = EditorGUILayout.ObjectField("Source Frame", lodSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatAsset;
 
-            if (lodSourceFrame == null || !lodSourceFrame.IsValid)
+            if (lodSourceFrame == null || !lodSourceFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox("Select a valid Gaussian Splat Asset to generate LODs.", MessageType.Warning);
                 return;
@@ -269,9 +269,9 @@ namespace UnitySplatter.GaussianSplatting.Editor
                 for (int i = 0; i < generatedLODs.Count; i++)
                 {
                     var lod = generatedLODs[i];
-                    if (lod != null && lod.IsValid)
+                    if (lod != null && lod.IsValid(out _))
                     {
-                        float reductionPercent = (1f - (float)lod.Count / lodSourceFrame.Count) * 100f;
+                        float reductionPercent = (1f - (float)lod.Count / lodSourceFrame.Frame.Count) * 100f;
                         EditorGUILayout.LabelField($"  LOD {i}: {lod.Count:N0} splats ({reductionPercent:F1}% reduction)");
                     }
                 }
@@ -294,9 +294,9 @@ namespace UnitySplatter.GaussianSplatting.Editor
             EditorGUILayout.Space(5);
 
             // Source selection
-            compressionSourceFrame = EditorGUILayout.ObjectField("Source Frame", compressionSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatFrameData;
+            compressionSourceFrame = EditorGUILayout.ObjectField("Source Frame", compressionSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatAsset;
 
-            if (compressionSourceFrame == null || !compressionSourceFrame.IsValid)
+            if (compressionSourceFrame == null || !compressionSourceFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox("Select a valid Gaussian Splat Asset to compress.", MessageType.Warning);
                 return;
@@ -314,7 +314,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
             // Display compression stats
             if (compressedData != null)
             {
-                int originalSize = GaussianSplatCompressor.GetUncompressedSize(compressionSourceFrame);
+                int originalSize = GaussianSplatCompressor.GetUncompressedSize(compressionSourceFrame.Frame);
                 int compressedSize = compressedData.GetCompressedSize();
                 float ratio = compressedData.GetCompressionRatio(originalSize);
 
@@ -396,9 +396,9 @@ namespace UnitySplatter.GaussianSplatting.Editor
             EditorGUILayout.Space(5);
 
             // Source selection
-            toolsSourceFrame = EditorGUILayout.ObjectField("Source Frame", toolsSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatFrameData;
+            toolsSourceFrame = EditorGUILayout.ObjectField("Source Frame", toolsSourceFrame as UnityEngine.Object, typeof(GaussianSplatAsset), false) as GaussianSplatAsset;
 
-            if (toolsSourceFrame == null || !toolsSourceFrame.IsValid)
+            if (toolsSourceFrame == null || !toolsSourceFrame.IsValid(out _))
             {
                 EditorGUILayout.HelpBox("Select a valid Gaussian Splat Asset to transform.", MessageType.Warning);
                 return;
@@ -456,7 +456,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
             {
                 importedFrame = GaussianSplatPlyLoader.LoadFromFile(importFilePath);
 
-                if (importedFrame != null && importedFrame.IsValid)
+                if (importedFrame != null && importedFrame.IsValid(out _))
                 {
                     EditorUtility.DisplayDialog("Success", $"Imported {importedFrame.Count:N0} splats", "OK");
                 }
@@ -495,7 +495,7 @@ namespace UnitySplatter.GaussianSplatting.Editor
                 foreach (string file in plyFiles)
                 {
                     var frame = GaussianSplatPlyLoader.LoadFromFile(file);
-                    if (frame != null && frame.IsValid)
+                    if (frame != null && frame.IsValid(out _))
                     {
                         sequenceFrames.Add(frame);
                     }
@@ -512,31 +512,35 @@ namespace UnitySplatter.GaussianSplatting.Editor
 
         private void ProcessFilterByOpacity()
         {
-            processFrame = GaussianSplatFilter.FilterByOpacity(processFrame, filterOpacity);
-            EditorUtility.DisplayDialog("Success", $"Filtered to {processFrame.Count:N0} splats", "OK");
+            var result = GaussianSplatFilter.FilterByOpacity(processFrame.Frame, filterOpacity);
+            processFrame.SetFrame(result);
+            EditorUtility.DisplayDialog("Success", $"Filtered to {processFrame.Frame.Count:N0} splats", "OK");
         }
 
         private void ProcessFilterByBounds()
         {
-            processFrame = GaussianSplatFilter.FilterByBounds(processFrame, filterBounds);
-            EditorUtility.DisplayDialog("Success", $"Filtered to {processFrame.Count:N0} splats", "OK");
+            var result = GaussianSplatFilter.FilterByBounds(processFrame.Frame, filterBounds);
+            processFrame.SetFrame(result);
+            EditorUtility.DisplayDialog("Success", $"Filtered to {processFrame.Frame.Count:N0} splats", "OK");
         }
 
         private void ProcessDecimate()
         {
-            processFrame = GaussianSplatFilter.Decimate(processFrame, decimationStride);
-            EditorUtility.DisplayDialog("Success", $"Decimated to {processFrame.Count:N0} splats", "OK");
+            var result = GaussianSplatFilter.Decimate(processFrame.Frame, decimationStride);
+            processFrame.SetFrame(result);
+            EditorUtility.DisplayDialog("Success", $"Decimated to {processFrame.Frame.Count:N0} splats", "OK");
         }
 
         private void ProcessRandomSample()
         {
-            processFrame = GaussianSplatFilter.RandomSample(processFrame, randomSampleCount, null);
-            EditorUtility.DisplayDialog("Success", $"Sampled to {processFrame.Count:N0} splats", "OK");
+            var result = GaussianSplatFilter.RandomSample(processFrame.Frame, randomSampleCount, null);
+            processFrame.SetFrame(result);
+            EditorUtility.DisplayDialog("Success", $"Sampled to {processFrame.Frame.Count:N0} splats", "OK");
         }
 
         private void GenerateLODs()
         {
-            generatedLODs = GaussianSplatLODGenerator.GenerateLODLevels(lodSourceFrame, lodLevelCount, lodMethod);
+            generatedLODs = GaussianSplatLODGenerator.GenerateLODLevels(lodSourceFrame.Frame, lodLevelCount, lodMethod);
             EditorUtility.DisplayDialog("Success", $"Generated {generatedLODs.Count} LOD levels", "OK");
         }
 
@@ -560,11 +564,11 @@ namespace UnitySplatter.GaussianSplatting.Editor
 
         private void CompressFrame()
         {
-            compressedData = GaussianSplatCompressor.CompressCPU(compressionSourceFrame);
+            compressedData = GaussianSplatCompressor.CompressCPU(compressionSourceFrame.Frame);
 
             if (compressedData != null)
             {
-                GaussianSplatCompressor.PrintCompressionStats(compressionSourceFrame, compressedData);
+                GaussianSplatCompressor.PrintCompressionStats(compressionSourceFrame.Frame, compressedData);
             }
         }
 
@@ -602,26 +606,30 @@ namespace UnitySplatter.GaussianSplatting.Editor
 
         private void ApplyTranslation()
         {
-            toolsSourceFrame = GaussianSplatEditing.Translate(toolsSourceFrame, translateOffset);
+            var result = GaussianSplatEditing.Translate(toolsSourceFrame.Frame, translateOffset);
+            toolsSourceFrame.SetFrame(result);
             EditorUtility.DisplayDialog("Success", "Translation applied", "OK");
         }
 
         private void ApplyScale()
         {
-            toolsSourceFrame = GaussianSplatEditing.Scale(toolsSourceFrame, scaleMultiplier);
+            var result = GaussianSplatEditing.Scale(toolsSourceFrame.Frame, scaleMultiplier);
+            toolsSourceFrame.SetFrame(result);
             EditorUtility.DisplayDialog("Success", "Scale applied", "OK");
         }
 
         private void ApplyRotation()
         {
             Quaternion rotation = Quaternion.Euler(rotationEuler);
-            toolsSourceFrame = GaussianSplatEditing.Rotate(toolsSourceFrame, rotation);
+            var result = GaussianSplatEditing.Rotate(toolsSourceFrame.Frame, rotation);
+            toolsSourceFrame.SetFrame(result);
             EditorUtility.DisplayDialog("Success", "Rotation applied", "OK");
         }
 
         private void ApplyTint()
         {
-            toolsSourceFrame = GaussianSplatEditing.Tint(toolsSourceFrame, tintColor);
+            var result = GaussianSplatEditing.Tint(toolsSourceFrame.Frame, tintColor);
+            toolsSourceFrame.SetFrame(result);
             EditorUtility.DisplayDialog("Success", "Tint applied", "OK");
         }
 

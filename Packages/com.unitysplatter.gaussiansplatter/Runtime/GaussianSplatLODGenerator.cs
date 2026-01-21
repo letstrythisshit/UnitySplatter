@@ -29,7 +29,7 @@ namespace UnitySplatter.GaussianSplatting
             int lodLevels = 4,
             LODGenerationMethod method = LODGenerationMethod.ImportanceBased)
         {
-            if (sourceData == null || !sourceData.IsValid || sourceData.Count == 0)
+            if (sourceData == null || !sourceData.IsValid(out _) || sourceData.Count == 0)
             {
                 Debug.LogError("[GaussianSplatLODGenerator] Invalid source data");
                 return new List<GaussianSplatFrameData>();
@@ -48,7 +48,7 @@ namespace UnitySplatter.GaussianSplatting
                 int targetCount = Mathf.Max(1, (int)(sourceData.Count * reductionFactors[i]));
                 GaussianSplatFrameData lodData = GenerateLODLevel(sourceData, targetCount, method, i);
 
-                if (lodData != null && lodData.IsValid)
+                if (lodData != null && lodData.IsValid(out _))
                 {
                     lodList.Add(lodData);
                 }
@@ -71,7 +71,7 @@ namespace UnitySplatter.GaussianSplatting
             LODGenerationMethod method,
             int lodLevel = 1)
         {
-            if (sourceData == null || !sourceData.IsValid)
+            if (sourceData == null || !sourceData.IsValid(out _))
                 return null;
 
             if (targetCount >= sourceData.Count)
@@ -136,8 +136,8 @@ namespace UnitySplatter.GaussianSplatting
 
             for (int i = 0; i < source.Count; i++)
             {
-                Vector3 scale = source.scales[i];
-                float opacity = source.opacities[i];
+                Vector3 scale = source.Scales[i];
+                float opacity = source.Opacities[i];
 
                 // Importance = size * opacity
                 float size = (scale.x + scale.y + scale.z) / 3f;
@@ -169,7 +169,7 @@ namespace UnitySplatter.GaussianSplatting
                 // Assignment step
                 for (int i = 0; i < source.Count; i++)
                 {
-                    Vector3 pos = source.positions[i];
+                    Vector3 pos = source.Positions[i];
                     float minDist = float.MaxValue;
                     int bestCluster = 0;
 
@@ -193,7 +193,7 @@ namespace UnitySplatter.GaussianSplatting
                 for (int i = 0; i < source.Count; i++)
                 {
                     int cluster = assignments[i];
-                    newCenters[cluster] += source.positions[i];
+                    newCenters[cluster] += source.Positions[i];
                     counts[cluster]++;
                 }
 
@@ -217,7 +217,7 @@ namespace UnitySplatter.GaussianSplatting
             // Insert all splats into octree
             for (int i = 0; i < source.Count; i++)
             {
-                root.Insert(i, source.positions[i], 8); // Max 8 levels deep
+                root.Insert(i, source.Positions[i], 8); // Max 8 levels deep
             }
 
             // Extract splats from octree with target density
@@ -244,7 +244,7 @@ namespace UnitySplatter.GaussianSplatting
 
             for (int i = 0; i < source.Count; i++)
             {
-                float opacity = source.opacities[i];
+                float opacity = source.Opacities[i];
                 float density = densities[i];
 
                 // Higher importance in high-density areas
@@ -269,7 +269,7 @@ namespace UnitySplatter.GaussianSplatting
             System.Random random = new System.Random(42);
 
             // First center is random
-            centers[0] = source.positions[random.Next(source.Count)];
+            centers[0] = source.Positions[random.Next(source.Count)];
 
             // Subsequent centers are chosen with probability proportional to distance from nearest existing center
             for (int c = 1; c < count; c++)
@@ -282,7 +282,7 @@ namespace UnitySplatter.GaussianSplatting
                     float minDist = float.MaxValue;
                     for (int j = 0; j < c; j++)
                     {
-                        float dist = Vector3.Distance(source.positions[i], centers[j]);
+                        float dist = Vector3.Distance(source.Positions[i], centers[j]);
                         minDist = Mathf.Min(minDist, dist);
                     }
                     distances[i] = minDist * minDist; // Square for better distribution
@@ -298,7 +298,7 @@ namespace UnitySplatter.GaussianSplatting
                     cumulative += distances[i];
                     if (cumulative >= threshold)
                     {
-                        centers[c] = source.positions[i];
+                        centers[c] = source.Positions[i];
                         break;
                     }
                 }
@@ -337,14 +337,14 @@ namespace UnitySplatter.GaussianSplatting
 
                 foreach (int idx in clusterSplats)
                 {
-                    avgPos += source.positions[idx];
-                    avgScale += source.scales[idx];
+                    avgPos += source.Positions[idx];
+                    avgScale += source.Scales[idx];
 
-                    Quaternion q = source.rotations[idx];
+                    Quaternion q = source.Rotations[idx];
                     avgRotQuat += new Vector4(q.x, q.y, q.z, q.w);
 
-                    avgColor += source.colors[idx];
-                    avgOpacity += source.opacities[idx];
+                    avgColor += source.Colors[idx];
+                    avgOpacity += source.Opacities[idx];
                 }
 
                 float count = clusterSplats.Count;
@@ -359,14 +359,9 @@ namespace UnitySplatter.GaussianSplatting
                 opacities.Add(avgOpacity / count);
             }
 
-            return new GaussianSplatFrameData
-            {
-                positions = positions.ToArray(),
-                scales = scales.ToArray(),
-                rotations = rotations.ToArray(),
-                colors = colors.ToArray(),
-                opacities = opacities.ToArray()
-            };
+            var result = new GaussianSplatFrameData();
+            result.SetData(positions.ToArray(), scales.ToArray(), rotations.ToArray(), colors.ToArray(), opacities.ToArray());
+            return result;
         }
 
         private static GaussianSplatFrameData CreateFrameFromIndices(GaussianSplatFrameData source, int[] indices)
@@ -380,21 +375,16 @@ namespace UnitySplatter.GaussianSplatting
             for (int i = 0; i < indices.Length; i++)
             {
                 int idx = indices[i];
-                positions[i] = source.positions[idx];
-                scales[i] = source.scales[idx];
-                rotations[i] = source.rotations[idx];
-                colors[i] = source.colors[idx];
-                opacities[i] = source.opacities[idx];
+                positions[i] = source.Positions[idx];
+                scales[i] = source.Scales[idx];
+                rotations[i] = source.Rotations[idx];
+                colors[i] = source.Colors[idx];
+                opacities[i] = source.Opacities[idx];
             }
 
-            return new GaussianSplatFrameData
-            {
-                positions = positions,
-                scales = scales,
-                rotations = rotations,
-                colors = colors,
-                opacities = opacities
-            };
+            var result = new GaussianSplatFrameData();
+            result.SetData(positions, scales, rotations, colors, opacities);
+            return result;
         }
 
         private static Bounds CalculateBounds(GaussianSplatFrameData source)
@@ -402,13 +392,13 @@ namespace UnitySplatter.GaussianSplatting
             if (source.Count == 0)
                 return new Bounds(Vector3.zero, Vector3.one);
 
-            Vector3 min = source.positions[0];
-            Vector3 max = source.positions[0];
+            Vector3 min = source.Positions[0];
+            Vector3 max = source.Positions[0];
 
             for (int i = 1; i < source.Count; i++)
             {
-                min = Vector3.Min(min, source.positions[i]);
-                max = Vector3.Max(max, source.positions[i]);
+                min = Vector3.Min(min, source.Positions[i]);
+                max = Vector3.Max(max, source.Positions[i]);
             }
 
             Vector3 center = (min + max) * 0.5f;
@@ -424,7 +414,7 @@ namespace UnitySplatter.GaussianSplatting
 
             for (int i = 0; i < source.Count; i++)
             {
-                Vector3 pos = source.positions[i];
+                Vector3 pos = source.Positions[i];
                 int neighborCount = 0;
 
                 // Count nearby splats (within search radius)
@@ -432,7 +422,7 @@ namespace UnitySplatter.GaussianSplatting
                 {
                     if (i == j) continue;
 
-                    float dist = Vector3.Distance(pos, source.positions[j]);
+                    float dist = Vector3.Distance(pos, source.Positions[j]);
                     if (dist < searchRadius)
                     {
                         neighborCount++;
@@ -532,8 +522,8 @@ namespace UnitySplatter.GaussianSplatting
                     {
                         if (idx >= source.Count) continue;
 
-                        float size = source.scales[idx].magnitude;
-                        float opacity = source.opacities[idx];
+                        float size = source.Scales[idx].magnitude;
+                        float opacity = source.Opacities[idx];
                         float score = size * opacity;
 
                         if (score > bestScore)
