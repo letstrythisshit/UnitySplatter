@@ -1,21 +1,23 @@
 # UnitySplatter Gaussian Splatting
 
-This package provides an advanced Gaussian splatting toolkit for Unity 6.3 LTS with:
+Unity 6.3 LTS package for advanced Gaussian splatting editing, reconstruction, realtime rendering, filtering, optimization, and playback.
 
-- PLY import (ASCII + binary), runtime streaming, and editor-time baking.
-- Real-time rendering via GPU-driven procedural draw.
-- Filters, optimizers, and reconstruction utilities.
-- Sequenced playback of multiple PLY frames at fixed FPS in editor, play mode, and player builds.
-- Designed to run on DirectX and Vulkan (desktop + Android).
+## Key Features
 
-## Quick start
-1. Create a **Gaussian Splat Asset** from a PLY file using the *Gaussian Splat Importer* window.
-2. Add **Gaussian Splat Renderer** to a GameObject and assign the asset.
-3. Use **Gaussian Splat Sequence Player** to play a sequence of assets or a directory of PLY files.
+- **Realtime rendering** for desktop and Android (DirectX/Vulkan) using procedural draw calls.
+- **PLY loader** supporting ASCII and binary little-endian formats with strict validation.
+- **Sequence playback** of multiple PLY files at a configurable frame rate during play mode and in builds.
+- **Prebuild baking** option to compile sequences into compact binary blobs for runtime efficiency.
+- **Filtering & optimization** utilities for deduplication, bounds culling, opacity thresholds, and more.
+- **Editor tooling** for import, preview, conversion, and batch bake pipelines.
+
+## Quick Start
+
+1. Import or place `.ply` files in your project (supports ScriptedImporter).
+2. Create a `GaussianSplatRenderer` component and assign a `GaussianSplatAsset`.
+3. To play sequences, add `GaussianSplatSequencePlayer` and set a directory or baked asset.
 
 ## Notes
-- For runtime directory streaming on Android, place PLY files under StreamingAssets.
-- For maximum performance, bake sequences in the editor into a **Gaussian Splat Sequence Asset**.
 
-## Samples
-The Samples~ folder provides small scenes and materials to validate rendering and playback.
+- Uses a procedural rendering shader with GPU buffers.
+- Designed to be extended with more advanced splat encodings or SH-based lighting.

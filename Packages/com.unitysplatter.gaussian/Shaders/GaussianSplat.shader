@@ -2,81 +2,99 @@ Shader "UnitySplatter/GaussianSplat"
 {
     Properties
     {
-        _OpacityScale("Opacity Scale", Float) = 1
-        _SizeScale("Size Scale", Float) = 1
-        _MinOpacity("Min Opacity", Float) = 0.01
+        _GlobalScale ("Global Scale", Float) = 1
+        _OpacityMultiplier ("Opacity Multiplier", Range(0,1)) = 1
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue"="Transparent" }
+        Tags { "Queue"="Transparent" "RenderType"="Transparent" }
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
         Pass
         {
             HLSLPROGRAM
+            #pragma vertex Vert
+            #pragma fragment Frag
             #pragma target 4.5
-            #pragma vertex vert
-            #pragma fragment frag
+
             #include "UnityCG.cginc"
 
-            struct GaussianPoint
+            StructuredBuffer<float3> _SplatBuffer_Position;
+            StructuredBuffer<float3> _SplatBuffer_Scale;
+            StructuredBuffer<float4> _SplatBuffer_Rotation;
+            StructuredBuffer<float4> _SplatBuffer_Color;
+
+            float _GlobalScale;
+            float _OpacityMultiplier;
+
+            struct SplatData
             {
-                float3 Position;
-                float3 Scale;
-                float4 Rotation;
-                float4 Color;
-                float Opacity;
-                float SH0;
-                float SH1;
-                float SH2;
-                float SH3;
-                float SH4;
-                float SH5;
-                float SH6;
-                float SH7;
-                float SH8;
+                float3 position;
+                float3 scale;
+                float4 rotation;
+                float4 color;
             };
 
-            StructuredBuffer<GaussianPoint> _Points;
-            int _PointCount;
-            float _OpacityScale;
-            float _SizeScale;
-            float _MinOpacity;
-            float _EnableSH;
+            StructuredBuffer<SplatData> _SplatBuffer;
 
-            struct appdata
+            struct Attributes
             {
                 uint vertexID : SV_VertexID;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 position : SV_POSITION;
-                float4 color : COLOR0;
-                float pointSize : PSIZE;
+                float4 positionCS : SV_POSITION;
+                float4 color : COLOR;
             };
 
-            v2f vert(appdata v)
+            float3x3 QuaternionToMatrix(float4 q)
             {
-                v2f o;
-                GaussianPoint p = _Points[v.vertexID];
-                float4 worldPos = float4(p.Position, 1.0);
-                o.position = UnityObjectToClipPos(worldPos);
-                float opacity = saturate(p.Opacity * _OpacityScale);
-                o.color = float4(p.Color.rgb, opacity);
-                float size = max(0.001, (p.Scale.x + p.Scale.y + p.Scale.z) / 3.0);
-                o.pointSize = size * _SizeScale * 1000.0;
-                return o;
+                float3x3 m;
+                float x2 = q.x + q.x;
+                float y2 = q.y + q.y;
+                float z2 = q.z + q.z;
+
+                float xx = q.x * x2;
+                float yy = q.y * y2;
+                float zz = q.z * z2;
+                float xy = q.x * y2;
+                float xz = q.x * z2;
+                float yz = q.y * z2;
+                float wx = q.w * x2;
+                float wy = q.w * y2;
+                float wz = q.w * z2;
+
+                m[0][0] = 1.0 - (yy + zz);
+                m[0][1] = xy - wz;
+                m[0][2] = xz + wy;
+                m[1][0] = xy + wz;
+                m[1][1] = 1.0 - (xx + zz);
+                m[1][2] = yz - wx;
+                m[2][0] = xz - wy;
+                m[2][1] = yz + wx;
+                m[2][2] = 1.0 - (xx + yy);
+
+                return m;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            Varyings Vert(Attributes input)
             {
-                if (i.color.a < _MinOpacity)
-                {
-                    discard;
-                }
+                Varyings output;
+                SplatData splat = _SplatBuffer[input.vertexID];
+                float3x3 rot = QuaternionToMatrix(splat.rotation);
+                float3 scale = splat.scale * _GlobalScale;
+                float3 worldPos = splat.position;
+                float4 positionCS = UnityObjectToClipPos(float4(worldPos, 1));
 
-                return i.color;
+                output.positionCS = positionCS;
+                output.color = float4(splat.color.rgb, splat.color.a * _OpacityMultiplier);
+                return output;
+            }
+
+            half4 Frag(Varyings input) : SV_Target
+            {
+                return half4(input.color.rgb, input.color.a);
             }
             ENDHLSL
         }

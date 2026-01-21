@@ -1,31 +1,27 @@
-using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-namespace UnitySplatter.Gaussian.Runtime
+namespace UnitySplatter.Gaussian
 {
-    [CreateAssetMenu(fileName = "GaussianSplatAsset", menuName = "UnitySplatter/Gaussian Splat Asset", order = 1)]
-    public sealed class GaussianSplatAsset : ScriptableObject
+    [CreateAssetMenu(menuName = "UnitySplatter/Gaussian Splat Asset", fileName = "GaussianSplatAsset")]
+    public class GaussianSplatAsset : ScriptableObject
     {
-        [SerializeField] private GaussianPoint[] points = Array.Empty<GaussianPoint>();
-        [SerializeField] private Bounds bounds = new Bounds(Vector3.zero, Vector3.one);
-        [SerializeField] private string sourcePath = string.Empty;
-        [SerializeField] private string sourceHash = string.Empty;
-        [SerializeField] private int version = 1;
+        [SerializeField] private List<GaussianSplatData> splats = new();
+        [SerializeField] private Bounds bounds;
+        [SerializeField] private string sourcePath;
+        [SerializeField] private bool isBaked;
 
-        public ReadOnlySpan<GaussianPoint> Points => points;
+        public IReadOnlyList<GaussianSplatData> Splats => splats;
         public Bounds Bounds => bounds;
         public string SourcePath => sourcePath;
-        public string SourceHash => sourceHash;
-        public int Version => version;
+        public bool IsBaked => isBaked;
 
-        public int Count => points?.Length ?? 0;
-
-        public void SetData(GaussianPoint[] newPoints, Bounds newBounds, string path, string hash)
+        public void Initialize(List<GaussianSplatData> data, Bounds dataBounds, string originPath, bool baked)
         {
-            points = newPoints ?? Array.Empty<GaussianPoint>();
-            bounds = newBounds;
-            sourcePath = path ?? string.Empty;
-            sourceHash = hash ?? string.Empty;
+            splats = data ?? new List<GaussianSplatData>();
+            bounds = dataBounds;
+            sourcePath = originPath;
+            isBaked = baked;
         }
     }
 }
